@@ -1,8 +1,14 @@
 import leafmap
+<<<<<<< HEAD
 from ipyleaflet import SplitMapControl, LayersControl, WidgetControl
 from ipywidgets import FloatSlider, jslink
 from localtileserver import get_leaflet_tile_layer
 
+=======
+from ipyleaflet import Map, SplitMapControl,LayersControl,WidgetControl
+from ipywidgets import FloatSlider, jslink
+from localtileserver import get_leaflet_tile_layer
+>>>>>>> f207c06... Initial SplitMap with opacity controls
 
 def hydro_map():
     m = leafmap.Map(center=(40, -100), zoom=4)
@@ -14,8 +20,12 @@ def visualise_geojson(path):
     m.add_geojson(path, layer_name='Geojson')
     return m
 
+<<<<<<< HEAD
 
 def create_split_map(base, left_layer_source, right_layer_source, style=None):
+=======
+def create_split_map(base,left_layer_source, right_layer_source, style=None, zoom=1, center=(0., 0.)):
+>>>>>>> f207c06... Initial SplitMap with opacity controls
     if left_layer_source is None or right_layer_source is None:
         return None
     styler = {"clamp": False, "palette": "matplotlib.Plasma_6", "band": 1}
@@ -39,4 +49,8 @@ def create_split_map(base, left_layer_source, right_layer_source, style=None):
     result.add_control(opacity_control_left)
     result.add_control(opacity_control_right)
 
+<<<<<<< HEAD
     return result
+=======
+    return result
+>>>>>>> f207c06... Initial SplitMap with opacity controls
