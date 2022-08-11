@@ -1,0 +1,5 @@
+/build/
+/.eggs/
+/dist/
+/hydro_visualiser.egg-info/
+/.idea/
