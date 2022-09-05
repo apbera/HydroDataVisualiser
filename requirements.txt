@@ -1,0 +1,2 @@
+leafmap~=0.10.3
+setuptools~=58.1.0
