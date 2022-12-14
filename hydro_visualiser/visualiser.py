@@ -4,14 +4,14 @@ import json
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from ipyleaflet import Map, SplitMapControl, LayersControl, WidgetControl, Marker, MarkerCluster, GeoJSON
+from ipyleaflet import Map, SplitMapControl, WidgetControl, Marker, MarkerCluster, GeoJSON
 from ipywidgets import FloatSlider, jslink, widgets, Play
 from localtileserver import get_leaflet_tile_layer
 from matplotlib import pyplot as plt
 
 
-def empty_map():
-    m = Map(center=(40, -100), zoom=4)
+def empty_map(center=(40, -100), zoom=4):
+    m = Map(center=center, zoom=zoom)
     return m
 
 
@@ -78,7 +78,7 @@ def visualise_tif(path):
     return m
 
 
-def create_split_map(left_layer_source, right_layer_source, base=Map(zoom=1, center=(0., 0.)), style=None):
+def add_split_map(base,left_layer_source, right_layer_source, style=None):
     if left_layer_source is None or right_layer_source is None:
         return None
     styler = {"clamp": False, "palette": "matplotlib.Plasma_6", "band": 1}
@@ -88,10 +88,8 @@ def create_split_map(left_layer_source, right_layer_source, base=Map(zoom=1, cen
     left_layer = get_leaflet_tile_layer(left_layer_source, style=styler)
     right_layer = get_leaflet_tile_layer(right_layer_source, style=styler)
 
-    result = base
-    result.add(LayersControl(position="bottomright"))
     split_control = SplitMapControl(left_layer=left_layer, right_layer=right_layer)
-    result.add(split_control)
+    base.add(split_control)
 
     opacity_slider_left = FloatSlider(description='Opacity of left layer:', min=0., max=1., step=0.01, value=1.)
     opacity_slider_right = FloatSlider(description='Opacity of right layer:', min=0., max=1., step=0.01, value=1.)
@@ -99,10 +97,10 @@ def create_split_map(left_layer_source, right_layer_source, base=Map(zoom=1, cen
     jslink((opacity_slider_right, 'value'), (split_control.right_layer, 'opacity'))
     opacity_control_left = WidgetControl(widget=opacity_slider_left, position='topright')
     opacity_control_right = WidgetControl(widget=opacity_slider_right, position='topright')
-    result.add(opacity_control_left)
-    result.add(opacity_control_right)
+    base.add(opacity_control_left)
+    base.add(opacity_control_right)
 
-    return result
+    return base
 
 
 # pinsArray format: [{x1, y2}, {x2, y2}...]
