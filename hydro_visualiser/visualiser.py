@@ -1,10 +1,11 @@
-import json
+from time import sleep
 import requests
+import json
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from ipyleaflet import Map, SplitMapControl, LayersControl, WidgetControl, Marker, MarkerCluster, GeoJSON
-from ipywidgets import FloatSlider, jslink, widgets
+from ipywidgets import FloatSlider, jslink, widgets, Play
 from localtileserver import get_leaflet_tile_layer
 from matplotlib import pyplot as plt
 
@@ -12,6 +13,7 @@ from matplotlib import pyplot as plt
 def empty_map():
     m = Map(center=(40, -100), zoom=4)
     return m
+
 
 def get_single_feature_cords(feature):
     feature_type = feature['geometry']['type'].lower()
@@ -26,11 +28,13 @@ def get_single_feature_cords(feature):
     elif feature_type == "geometrycollection":
         return feature['geometry']['coordinates'][0][0]
 
+
 def get_map_cords(data):
     if data['type'] == "FeatureCollection":
         return get_single_feature_cords(data['features'][0])
     else:
         return get_single_feature_cords(data)
+
 
 def visualise_geojson(path):
     if path[:4] == "http":
@@ -51,8 +55,9 @@ def visualise_geojson(path):
         style={'color': 'black'},
         hover_style={'color': 'gray'}
     )
-    m.add_layer(geo_json)
+    m.add(geo_json)
     return m
+
 
 def visualise_tif(path):
     if path is None:
@@ -69,8 +74,9 @@ def visualise_tif(path):
     styler = {"clamp": False, "palette": "matplotlib.Plasma_6", "band": 1}
     layer = get_leaflet_tile_layer(path, style=styler)
     m = Map(zoom=6, center=(layer.bounds[0][0], layer.bounds[0][1]))
-    m.add_layer(layer)
+    m.add(layer)
     return m
+
 
 def create_split_map(left_layer_source, right_layer_source, base=Map(zoom=1, center=(0., 0.)), style=None):
     if left_layer_source is None or right_layer_source is None:
@@ -83,9 +89,9 @@ def create_split_map(left_layer_source, right_layer_source, base=Map(zoom=1, cen
     right_layer = get_leaflet_tile_layer(right_layer_source, style=styler)
 
     result = base
-    result.add_control(LayersControl(position="bottomright"))
+    result.add(LayersControl(position="bottomright"))
     split_control = SplitMapControl(left_layer=left_layer, right_layer=right_layer)
-    result.add_control(split_control)
+    result.add(split_control)
 
     opacity_slider_left = FloatSlider(description='Opacity of left layer:', min=0., max=1., step=0.01, value=1.)
     opacity_slider_right = FloatSlider(description='Opacity of right layer:', min=0., max=1., step=0.01, value=1.)
@@ -93,8 +99,8 @@ def create_split_map(left_layer_source, right_layer_source, base=Map(zoom=1, cen
     jslink((opacity_slider_right, 'value'), (split_control.right_layer, 'opacity'))
     opacity_control_left = WidgetControl(widget=opacity_slider_left, position='topright')
     opacity_control_right = WidgetControl(widget=opacity_slider_right, position='topright')
-    result.add_control(opacity_control_left)
-    result.add_control(opacity_control_right)
+    result.add(opacity_control_left)
+    result.add(opacity_control_right)
 
     return result
 
@@ -139,4 +145,26 @@ def addPinsAndWidgets(base, pinsArray):
         markers=pins
     )
     base.add_layer(marker_cluster)
+    return base
+
+
+def add_animation_with_rasters_series(base, raster_series, interval=300):
+    if (len(raster_series)) < 2:
+        return None
+    base.add(raster_series[0])
+    play = Play(value=0, min=0, max=len(raster_series) - 1, step=1, interval=interval, description="Press play",
+                disabled=False)
+
+    def _animation_handler(caller):
+        if (caller.new == 0):
+            base.layers = tuple([base.layers[0]])
+            base.add_layer(raster_series[0])
+            return
+        base.add_layer(raster_series[caller.new])
+        sleep(0.001)  # Necessary to prevent clipping
+        base.remove_layer(raster_series[caller.old])
+
+    play.observe(_animation_handler, names='value')
+    animation_control = WidgetControl(widget=play, position='bottomright')
+    base.add(animation_control)
     return base
