@@ -8,6 +8,9 @@ from ipyleaflet import Map, SplitMapControl, WidgetControl, Marker, MarkerCluste
 from ipywidgets import FloatSlider, jslink, widgets, Play
 from localtileserver import get_leaflet_tile_layer
 from matplotlib import pyplot as plt
+from shapely.geometry import Point, Polygon
+import geopandas as gpd
+
 
 
 def empty_map(center=(40, -100), zoom=4):
@@ -166,3 +169,69 @@ def add_animation_with_rasters_series(base, raster_series, interval=300):
     animation_control = WidgetControl(widget=play, position='bottomright')
     base.add(animation_control)
     return base
+
+polygon=[]
+temps=[]
+
+button = widgets.Button(description='Submit temperature')
+slider = widgets.FloatSlider(
+    value=7.5,
+    min=-50,
+    max=50,
+    step=0.1,
+    orientation='horizontal'
+)
+continuebutton = widgets.Button(description='Finish polygon')
+paused = False
+to_fill = gpd.GeoDataFrame(geometry=[], data={}, crs='EPSG:4326')
+
+
+def on_ok_button_clicked(b):
+    temps.append(slider.value)
+    button.layout.display = "none"
+    slider.layout.display = "none"
+    global paused 
+    paused = False
+
+def on_end_button_clicked(b):
+    button.close()
+    slider.close()
+    continuebutton.close()
+    global to_fill
+    to_fill = gpd.GeoDataFrame(geometry=polygon, data={'temperature':temps}, crs='EPSG:4326')    
+        
+def add_pin(map, coordinates):
+    map.add_layer(Marker(location=coordinates))
+
+def display_form(map):
+
+    button.on_click(on_ok_button_clicked)
+    widget_control_button = WidgetControl(widget=button, position='bottomright')
+    widget_control_slider = WidgetControl(widget=slider, position='topright')
+    m.add_control(widget_control_button)
+    m.add_control(widget_control_slider)
+    button.layout.display = "none"
+    slider.layout.display = "none"
+
+def clear_map():
+    m.clearControls(m)
+
+def handle_click(**kwargs):
+    if kwargs.get('type') == 'click':
+        global paused
+        if paused == False:
+            button.layout.display = "block"
+            slider.layout.display = "block"
+            polygon.append(Point(kwargs.get('coordinates')[0], kwargs.get('coordinates')[1]))
+            add_pin(m, kwargs.get('coordinates'))
+            paused=True
+def create_dataframe(m):
+    continuebutton.on_click(on_end_button_clicked)
+    widget_control_button2 = WidgetControl(widget=continuebutton, position='bottomleft')
+    m.add_control(widget_control_button2)
+    display_form(m)
+    m.on_interaction(handle_click)
+
+m = Map(center=(40, -100), zoom=4)
+create_dataframe(m)
+m
