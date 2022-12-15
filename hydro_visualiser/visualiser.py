@@ -214,7 +214,7 @@ def display_form(map):
     button.layout.display = "none"
     slider.layout.display = "none"
 
-def handle_click(**kwargs):
+def handle_click1(**kwargs):
     if kwargs.get('type') == 'click':
         global paused
         if paused == False:
@@ -228,7 +228,7 @@ def create_dataframe(m):
     widget_control_button = WidgetControl(widget=continuebutton, position='bottomleft')
     m.add_control(widget_control_button)
     display_form(m)
-    m.on_interaction(handle_click)
+    m.on_interaction(handle_click1)
 
 #polygon widget -> to get value just print(to_fill_array[index])
 polygon2=[]
@@ -267,7 +267,7 @@ def display_form2(map):
     m.add_control(widget_control_button)
     button2.layout.display = "none"
 
-def handle_click(**kwargs):
+def handle_click2(**kwargs):
     if kwargs.get('type') == 'click':
         button2.layout.display = "block"
         polygon2.append(Point(kwargs.get('coordinates')[0], kwargs.get('coordinates')[1]))
@@ -280,4 +280,4 @@ def create_dataframe_polygons(m):
     widget_control_button = WidgetControl(widget=continuebutton2, position='bottomleft')
     m.add_control(widget_control_button)
     display_form2(m)
-    m.on_interaction(handle_click)
+    m.on_interaction(handle_click2)
