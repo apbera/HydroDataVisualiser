@@ -170,6 +170,7 @@ def add_animation_with_rasters_series(base, raster_series, interval=300):
     base.add(animation_control)
     return base
 
+#temperature widget -> to get value just print(to_fill)
 polygon=[]
 temps=[]
 
@@ -213,9 +214,6 @@ def display_form(map):
     button.layout.display = "none"
     slider.layout.display = "none"
 
-def clear_map():
-    m.clearControls(m)
-
 def handle_click(**kwargs):
     if kwargs.get('type') == 'click':
         global paused
@@ -227,11 +225,59 @@ def handle_click(**kwargs):
             paused=True
 def create_dataframe(m):
     continuebutton.on_click(on_end_button_clicked)
-    widget_control_button2 = WidgetControl(widget=continuebutton, position='bottomleft')
-    m.add_control(widget_control_button2)
+    widget_control_button = WidgetControl(widget=continuebutton, position='bottomleft')
+    m.add_control(widget_control_button)
     display_form(m)
     m.on_interaction(handle_click)
 
-m = Map(center=(40, -100), zoom=4)
-create_dataframe(m)
-m
+#polygon widget -> to get value just print(to_fill_array[index])
+polygon2=[]
+points2=[]
+
+to_fill_array=[]
+button2 = widgets.Button(description='Submit polygon')
+continuebutton2 = widgets.Button(description='End')
+to_fill = gpd.GeoDataFrame(geometry=[], data={}, crs='EPSG:4326')
+
+
+def on_submit_button_clicked(b):
+    global points2
+    button2.layout.display = "none"
+    multipolygon = Polygon(
+    locations=[
+        points2
+    ],
+    color="green",
+    fill_color="green"
+    )
+    m.add_layer(multipolygon)
+    global polygon2
+    to_fill_array.append(gpd.GeoDataFrame(geometry=polygon2, crs='EPSG:4326'))
+    points2=[]
+    polygon2=[]
+
+def on_finish_button_clicked(b):
+    button2.close()
+    continuebutton2.close()
+
+def display_form2(map):
+
+    button2.on_click(on_submit_button_clicked)
+    widget_control_button = WidgetControl(widget=button2, position='bottomright')
+    m.add_control(widget_control_button)
+    button2.layout.display = "none"
+
+def handle_click(**kwargs):
+    if kwargs.get('type') == 'click':
+        button2.layout.display = "block"
+        polygon2.append(Point(kwargs.get('coordinates')[0], kwargs.get('coordinates')[1]))
+        point = (kwargs.get('coordinates')[0], kwargs.get('coordinates')[1])
+        points2.append(point)
+        add_pin(m, kwargs.get('coordinates'))
+
+def create_dataframe_polygons(m):
+    continuebutton2.on_click(on_finish_button_clicked)
+    widget_control_button = WidgetControl(widget=continuebutton2, position='bottomleft')
+    m.add_control(widget_control_button)
+    display_form2(m)
+    m.on_interaction(handle_click)
