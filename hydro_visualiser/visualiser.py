@@ -10,7 +10,7 @@ from localtileserver import get_leaflet_tile_layer
 from matplotlib import pyplot as plt
 from shapely.geometry import Point
 import geopandas as gpd
-
+from tqdm.notebook import tqdm
 
 
 def empty_map(center=(40, -100), zoom=4):
@@ -148,11 +148,17 @@ def addPinsAndWidgets(base, pinsArray):
     base.add_layer(marker_cluster)
     return base
 
+def prepare_layers_series(series_paths):
+    styler={"clamp":False,"palette":"matplotlib.Plasma_6","band":1}
+    series=[]
+    for i in tqdm(range(len(series_paths))):
+        series.append(get_leaflet_tile_layer(series_paths[i],style=styler))
+    return series
 
-def add_animation_with_rasters_series(base, raster_series, interval=300):
+def add_animation_from_raster_series(base, raster_series, interval=300):
     if (len(raster_series)) < 2:
         return None
-    base.add(raster_series[0])
+    base.add_layer(raster_series[0])
     play = Play(value=0, min=0, max=len(raster_series) - 1, step=1, interval=interval, description="Press play",
                 disabled=False)
 
@@ -162,12 +168,12 @@ def add_animation_with_rasters_series(base, raster_series, interval=300):
             base.add_layer(raster_series[0])
             return
         base.add_layer(raster_series[caller.new])
-        sleep(0.001)  # Necessary to prevent clipping
-        base.remove_layer(raster_series[caller.old])
+        if len(base.layers[1:])>2:
+            base.remove_layer(raster_series[base.layers[1]])
 
     play.observe(_animation_handler, names='value')
     animation_control = WidgetControl(widget=play, position='bottomright')
-    base.add(animation_control)
+    base.add_control(animation_control)
     return base
 
 #temperature widget -> to get value just print(to_fill)
@@ -204,7 +210,7 @@ def create_dataframe(m, to_fill_array):
             temp_array.append(slider.value)
             button.layout.display = "none"
             slider.layout.display = "none"
-            global paused 
+            global paused
             paused = False
             finish_button.layout.display="block"
         button.on_click(on_ok_button_clicked)
@@ -213,7 +219,7 @@ def create_dataframe(m, to_fill_array):
         m.add_control(submit_control)
         m.add_control(widget_control_slider)
         button.layout.display = "none"
-        slider.layout.display = "none"                
+        slider.layout.display = "none"
     def on_end_button_clicked(b):
         button.close()
         slider.close()
@@ -241,7 +247,7 @@ def create_dataframe_polygons(m, to_fill_array):
     end_button = widgets.Button(description='End/Make another polygon')
     submit_control = WidgetControl(widget=submit_button, position='bottomright')
     end_button.layout.display = "none"
-    end_control = WidgetControl(widget=end_button, position='bottomleft')    
+    end_control = WidgetControl(widget=end_button, position='bottomleft')
     def handle_click2(**kwargs):
         if kwargs.get('type') == 'click':
             submit_button.layout.display = "block"
