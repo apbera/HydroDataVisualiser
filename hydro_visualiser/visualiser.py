@@ -18,27 +18,6 @@ def empty_map(center=(40, -100), zoom=4):
     return m
 
 
-def get_single_feature_cords(feature):
-    feature_type = feature['geometry']['type'].lower()
-    if feature_type == "point":
-        return feature['geometry']['coordinates']
-    elif feature_type == "linestring" or feature_type == "multipoint":
-        return feature['geometry']['coordinates'][0]
-    elif feature_type == "polygon" or feature_type == "multilinestring":
-        return feature['geometry']['coordinates'][0][0]
-    elif feature_type == "multipolygon":
-        return feature['geometry']['coordinates'][0][0][0]
-    elif feature_type == "geometrycollection":
-        return feature['geometry']['coordinates'][0][0]
-
-
-def get_map_cords(data):
-    if data['type'] == "FeatureCollection":
-        return get_single_feature_cords(data['features'][0])
-    else:
-        return get_single_feature_cords(data)
-
-
 def visualise_geojson(path):
     if path[:4] == "http":
         r = requests.get(path)
@@ -50,6 +29,25 @@ def visualise_geojson(path):
         except IOError:
             print("There is no such a file")
             return None
+
+    def get_single_feature_cords(feature):
+        feature_type = feature['geometry']['type'].lower()
+        if feature_type == "point":
+            return feature['geometry']['coordinates']
+        elif feature_type == "linestring" or feature_type == "multipoint":
+            return feature['geometry']['coordinates'][0]
+        elif feature_type == "polygon" or feature_type == "multilinestring":
+            return feature['geometry']['coordinates'][0][0]
+        elif feature_type == "multipolygon":
+            return feature['geometry']['coordinates'][0][0][0]
+        elif feature_type == "geometrycollection":
+            return feature['geometry']['coordinates'][0][0]
+
+    def get_map_cords(data):
+        if data['type'] == "FeatureCollection":
+            return get_single_feature_cords(data['features'][0])
+        else:
+            return get_single_feature_cords(data)
 
     cords = get_map_cords(data)
     m = Map(center=(cords[1], cords[0]), zoom=6)
@@ -77,7 +75,11 @@ def visualise_tif(path):
     styler = {"clamp": False, "palette": "matplotlib.Plasma_6", "band": 1}
     layer = get_leaflet_tile_layer(path, style=styler)
     m = Map(zoom=6, center=(layer.bounds[0][0], layer.bounds[0][1]))
+    opacity_slider = FloatSlider(description='Opacity:', min=0., max=1., step=0.01, value=1.)
+    jslink((opacity_slider, 'value'), (layer, 'opacity'))
+    opacity_control = WidgetControl(widget=opacity_slider, position='topright')
     m.add(layer)
+    m.add(opacity_control)
     return m
 
 
