@@ -4,11 +4,11 @@ import json
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from ipyleaflet import Map, SplitMapControl, WidgetControl, Marker, MarkerCluster, GeoJSON
+from ipyleaflet import Map, SplitMapControl, WidgetControl, Marker, MarkerCluster, GeoJSON, Polygon
 from ipywidgets import FloatSlider, jslink, widgets, Play
 from localtileserver import get_leaflet_tile_layer
 from matplotlib import pyplot as plt
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point
 import geopandas as gpd
 
 
@@ -139,7 +139,7 @@ def addPinsAndWidgets(base, pinsArray):
     base.add_control(widget_tab)
 
     for i in range(1, len(pinsArray)):
-        new_marker = Marker(location=(pinsArray[i][0], pinsArray[i][1]), draggable=False)
+        new_marker = Marker(location=(pinsArray[i].x, pinsArray[i].y), draggable=False)
         new_marker.on_click(handle_click(i, out, charts))
         pins.append(new_marker)
     marker_cluster = MarkerCluster(
@@ -172,112 +172,113 @@ def add_animation_with_rasters_series(base, raster_series, interval=300):
 
 #temperature widget -> to get value just print(to_fill)
 polygon=[]
-temps=[]
-
-button = widgets.Button(description='Submit temperature')
-slider = widgets.FloatSlider(
-    value=7.5,
-    min=-50,
-    max=50,
-    step=0.1,
-    orientation='horizontal'
-)
-continuebutton = widgets.Button(description='Finish polygon')
+temp_array=[]
 paused = False
-to_fill = gpd.GeoDataFrame(geometry=[], data={}, crs='EPSG:4326')
 
-
-def on_ok_button_clicked(b):
-    temps.append(slider.value)
-    button.layout.display = "none"
-    slider.layout.display = "none"
-    global paused 
-    paused = False
-
-def on_end_button_clicked(b):
-    button.close()
-    slider.close()
-    continuebutton.close()
-    global to_fill
-    to_fill = gpd.GeoDataFrame(geometry=polygon, data={'temperature':temps}, crs='EPSG:4326')    
-        
 def add_pin(map, coordinates):
     map.add_layer(Marker(location=coordinates))
 
-def display_form(map):
 
-    button.on_click(on_ok_button_clicked)
-    widget_control_button = WidgetControl(widget=button, position='bottomright')
-    widget_control_slider = WidgetControl(widget=slider, position='topright')
-    m.add_control(widget_control_button)
-    m.add_control(widget_control_slider)
-    button.layout.display = "none"
-    slider.layout.display = "none"
-
-def handle_click1(**kwargs):
-    if kwargs.get('type') == 'click':
-        global paused
-        if paused == False:
-            button.layout.display = "block"
-            slider.layout.display = "block"
-            polygon.append(Point(kwargs.get('coordinates')[0], kwargs.get('coordinates')[1]))
-            add_pin(m, kwargs.get('coordinates'))
-            paused=True
-def create_dataframe(m):
-    continuebutton.on_click(on_end_button_clicked)
-    widget_control_button = WidgetControl(widget=continuebutton, position='bottomleft')
-    m.add_control(widget_control_button)
+def create_dataframe(m, to_fill_array):
+    finish_button = widgets.Button(description='Finish polygon')
+    button = widgets.Button(description='Submit temperature')
+    slider = widgets.FloatSlider(
+        value=7.5,
+        min=-50,
+        max=50,
+        step=0.1,
+        orientation='horizontal'
+    )
+    def handle_click1(**kwargs):
+        if kwargs.get('type') == 'click':
+            finish_button.layout.display="none"
+            global paused
+            if paused == False:
+                button.layout.display = "block"
+                slider.layout.display = "block"
+                polygon.append(Point(kwargs.get('coordinates')[0], kwargs.get('coordinates')[1]))
+                add_pin(m, kwargs.get('coordinates'))
+                paused=True
+    def display_form(m):
+        def on_ok_button_clicked(b):
+            temp_array.append(slider.value)
+            button.layout.display = "none"
+            slider.layout.display = "none"
+            global paused 
+            paused = False
+            finish_button.layout.display="block"
+        button.on_click(on_ok_button_clicked)
+        submit_control = WidgetControl(widget=button, position='bottomright')
+        widget_control_slider = WidgetControl(widget=slider, position='topright')
+        m.add_control(submit_control)
+        m.add_control(widget_control_slider)
+        button.layout.display = "none"
+        slider.layout.display = "none"                
+    def on_end_button_clicked(b):
+        button.close()
+        slider.close()
+        finish_button.close()
+        global polygon
+        global temp_array
+        tmp = gpd.GeoDataFrame(geometry=polygon, data={'temperature':temp_array}, crs='EPSG:4326')
+        to_fill_array.append(tmp)
+        print(f'{tmp}')
+        polygon=[]
+        temp_array=[]
+    finish_button.on_click(on_end_button_clicked)
+    submit_control = WidgetControl(widget=finish_button, position='bottomleft')
+    m.add_control(submit_control)
     display_form(m)
     m.on_interaction(handle_click1)
+    return m
 
 #polygon widget -> to get value just print(to_fill_array[index])
-polygon2=[]
-points2=[]
 
-to_fill_array=[]
-button2 = widgets.Button(description='Submit polygon')
-continuebutton2 = widgets.Button(description='End')
-to_fill = gpd.GeoDataFrame(geometry=[], data={}, crs='EPSG:4326')
-
-
-def on_submit_button_clicked(b):
-    global points2
-    button2.layout.display = "none"
-    multipolygon = Polygon(
-    locations=[
-        points2
-    ],
-    color="green",
-    fill_color="green"
-    )
-    m.add_layer(multipolygon)
-    global polygon2
-    to_fill_array.append(gpd.GeoDataFrame(geometry=polygon2, crs='EPSG:4326'))
-    points2=[]
-    polygon2=[]
-
-def on_finish_button_clicked(b):
-    button2.close()
-    continuebutton2.close()
-
-def display_form2(map):
-
-    button2.on_click(on_submit_button_clicked)
-    widget_control_button = WidgetControl(widget=button2, position='bottomright')
-    m.add_control(widget_control_button)
-    button2.layout.display = "none"
-
-def handle_click2(**kwargs):
-    if kwargs.get('type') == 'click':
-        button2.layout.display = "block"
-        polygon2.append(Point(kwargs.get('coordinates')[0], kwargs.get('coordinates')[1]))
-        point = (kwargs.get('coordinates')[0], kwargs.get('coordinates')[1])
-        points2.append(point)
-        add_pin(m, kwargs.get('coordinates'))
-
-def create_dataframe_polygons(m):
-    continuebutton2.on_click(on_finish_button_clicked)
-    widget_control_button = WidgetControl(widget=continuebutton2, position='bottomleft')
-    m.add_control(widget_control_button)
+polygon_array=[]
+locations_array=[]
+def create_dataframe_polygons(m, to_fill_array):
+    submit_button = widgets.Button(description='Submit polygon')
+    end_button = widgets.Button(description='End/Make another polygon')
+    submit_control = WidgetControl(widget=submit_button, position='bottomright')
+    end_button.layout.display = "none"
+    end_control = WidgetControl(widget=end_button, position='bottomleft')    
+    def handle_click2(**kwargs):
+        if kwargs.get('type') == 'click':
+            submit_button.layout.display = "block"
+            polygon_array.append(Point(kwargs.get('coordinates')[0], kwargs.get('coordinates')[1]))
+            point = (kwargs.get('coordinates')[0], kwargs.get('coordinates')[1])
+            locations_array.append(point)
+            add_pin(m, kwargs.get('coordinates'))
+    def on_finish_button_clicked(b):
+        submit_button.close()
+        end_button.close()
+        m.remove_control(submit_control)
+        m.remove_control(end_control)
+        print(f"{to_fill_array}")
+    def display_form2(m):
+        def on_submit_button_clicked(b):
+            end_button.layout.display = "block"
+            global locations_array
+            submit_button.layout.display = "none"
+            multipolygon = Polygon(
+            locations=[
+                locations_array
+            ],
+            color="green",
+            fill_color="green"
+            )
+            m.add_layer(multipolygon)
+            global polygon_array
+            tmp = gpd.GeoDataFrame(geometry=polygon_array, crs='EPSG:4326')
+            to_fill_array.append(tmp)
+            print(f"[1] : {tmp}")
+            locations_array=[]
+            polygon_array=[]
+        submit_button.on_click(on_submit_button_clicked)
+        submit_button.layout.display = "none"
+    end_button.on_click(on_finish_button_clicked)
+    m.add_control(submit_control)
+    m.add_control(end_control)
     display_form2(m)
     m.on_interaction(handle_click2)
+    return m
