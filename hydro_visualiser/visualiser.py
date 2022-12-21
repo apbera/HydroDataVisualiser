@@ -129,7 +129,7 @@ def handle_click(number, out, charts):
     return update_widget
 
 
-def addPinsAndWidgets(base, pinsArray):
+def add_pins_and_widgets(base, pinsArray):
     pins = []
     out = widgets.Output(layout={'border': '1px solid black'})
     charts = widgets.Output(layout={'border': '1px solid black'})
