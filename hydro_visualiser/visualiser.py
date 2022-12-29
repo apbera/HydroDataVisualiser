@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from ipyleaflet import Map, SplitMapControl, WidgetControl, Marker, MarkerCluster, GeoJSON, Polygon
-from ipywidgets import FloatSlider, jslink, widgets, Play
+from ipywidgets import FloatSlider, jslink, widgets, Play, HTML, Button, HBox
 from localtileserver import get_leaflet_tile_layer
 from matplotlib import pyplot as plt
 from shapely.geometry import Point
@@ -142,26 +142,77 @@ def prepare_layers_series(series_paths):
         series.append(get_leaflet_tile_layer(series_paths[i],style=styler))
     return series
 
-def add_animation_from_raster_series(base, raster_series, interval=300):
+
+def add_animation_from_raster_series(base, raster_series, raster_url_list, interval=300):
     if (len(raster_series)) < 2:
         return None
-    base.add_layer(raster_series[0])
+    for layer in raster_series:
+        base.add_layer(layer)
+    base.layers[1].opacity = 1.
     play = Play(value=0, min=0, max=len(raster_series) - 1, step=1, interval=interval, description="Press play",
                 disabled=False)
+    filenames = HTML(value=raster_url_list[0], placeholder='Placeholder', description='File URL:')
+
+    step_back = Button(description='', disabled=False, button_style='', icon='step-backward')
+    step_forward = Button(description='', disabled=False, button_style='', icon='step-forward')
 
     def _animation_handler(caller):
-        if (caller.new == 0):
-            base.layers = tuple([base.layers[0]])
-            base.add_layer(raster_series[0])
-            return
-        base.add_layer(raster_series[caller.new])
-        if len(base.layers[1:])>2:
-            base.remove_layer(raster_series[base.layers[1]])
+        base.layers[caller.new + 1].opacity = 1.
+        base.layers[caller.old + 1].opacity = 0.
+        filenames.value = raster_url_list[caller.new]
+
+    def _step_controller(caller):
+        if caller.new:
+            step_back.disabled = True
+            step_forward.disabled = True
+        else:
+            step_back.disabled = False
+            step_forward.disabled = False
+
+    def _step_back_handler(caller):
+        if play.value > 0:
+            play.value = play.value - 1
+
+    def _step_forward_handler(caller):
+        if play.value < play.max:
+            play.value = play.value + 1
 
     play.observe(_animation_handler, names='value')
-    animation_control = WidgetControl(widget=play, position='bottomright')
+    play.observe(_step_controller, names='_playing')
+    step_back.on_click(_step_back_handler)
+    step_forward.on_click(_step_forward_handler)
+
+    animation_box = HBox([step_back, step_forward, play])
+
+    animation_control = WidgetControl(widget=animation_box, position='bottomright')
+    filename_control = WidgetControl(widget=filenames, position='bottomleft')
+
     base.add_control(animation_control)
+    base.add_control(filename_control)
     return base
+
+#Old animation version
+
+# def add_animation_from_raster_series(base, raster_series, interval=300):
+#     if (len(raster_series)) < 2:
+#         return None
+#     base.add_layer(raster_series[0])
+#     play = Play(value=0, min=0, max=len(raster_series) - 1, step=1, interval=interval, description="Press play",
+#                 disabled=False)
+#     def _animation_handler(caller):
+#         if (caller.new == 0):
+#             base.layers = tuple([base.layers[0]])
+#             base.add_layer(raster_series[0])
+#             return
+#         print(play._playing)
+#         base.add_layer(raster_series[caller.new])
+#         if len(base.layers[1:])>2:
+#             base.remove_layer(raster_series[base.layers[1]])
+#
+#     play.observe(_animation_handler, names='value')
+#     animation_control = WidgetControl(widget=play, position='bottomright')
+#     base.add_control(animation_control)
+#     return base
 
 #temperature widget -> to get value just print(to_fill)
 polygon=[]
