@@ -153,8 +153,10 @@ def add_animation_from_raster_series(base, raster_series, raster_url_list, inter
                 disabled=False)
     filenames = HTML(value=raster_url_list[0], placeholder='Placeholder', description='File URL:')
 
-    step_back = Button(description='', disabled=False, button_style='', icon='step-backward')
-    step_forward = Button(description='', disabled=False, button_style='', icon='step-forward')
+    step_back = Button(description='', disabled=False, button_style='', icon='step-backward',
+                       layout=Layout(width='50%', height='30px'))
+    step_forward = Button(description='', disabled=False, button_style='', icon='step-forward',
+                          layout=Layout(width='50%', height='30px'))
 
     def _animation_handler(caller):
         base.layers[caller.new + 1].opacity = 1.
