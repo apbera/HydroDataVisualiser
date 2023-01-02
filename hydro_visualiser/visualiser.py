@@ -3,8 +3,8 @@ import json
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from ipyleaflet import Map, SplitMapControl, WidgetControl, Marker, MarkerCluster, GeoJSON, Polygon
-from ipywidgets import FloatSlider, jslink, widgets, Play, HTML, Button, HBox
+from ipyleaflet import Map, SplitMapControl, WidgetControl, Marker, MarkerCluster, GeoJSON, Polygon, LayersControl
+from ipywidgets import FloatSlider, jslink, widgets, Play, HTML, Button, HBox, Layout
 from localtileserver import get_leaflet_tile_layer
 from matplotlib import pyplot as plt
 from shapely.geometry import Point
@@ -12,8 +12,10 @@ import geopandas as gpd
 from tqdm.notebook import tqdm
 
 
-def empty_map(center=(40, -100), zoom=4):
+def empty_map(center=(40, -100), zoom=4, layers_control=False):
     m = Map(center=center, zoom=zoom)
+    if layers_control:
+        m.add(LayersControl(position='bottomleft'))
     return m
 
 
