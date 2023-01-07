@@ -44,6 +44,29 @@ def add_geojson(m,path,style=None):
     m.add(geo_json)
     return m
 
+def add_geojson_internal(m,path,style=None):
+    if path[:4] == "http":
+        r = requests.get(path)
+        data = r.json()
+    else:
+        try:
+            with open(path, 'r') as f:
+                data = json.load(f)
+        except IOError:
+            print("There is no such a file")
+            return None
+
+    if style is None:
+        styler={'color': 'black'}
+    else:
+        styler=style
+
+    geo_json = GeoJSON(
+        data=data,
+        style=styler,
+        hover_style={'color': 'gray'}
+    )
+    m.add(geo_json)
 
 def add_tif(m, path, opacity=False):
     if path is None:
@@ -230,6 +253,7 @@ def add_pin(map, coordinates):
 def create_dataframe(m, to_fill_array):
     finish_button = widgets.Button(description='Finish polygon')
     button = widgets.Button(description='Submit temperature')
+
     slider = widgets.FloatSlider(
         value=7.5,
         min=-50,
@@ -239,40 +263,56 @@ def create_dataframe(m, to_fill_array):
     )
     def handle_click1(**kwargs):
         if kwargs.get('type') == 'click':
-            finish_button.layout.display="none"
             global paused
+
+            finish_button.layout.display="none"
             if paused == False:
                 button.layout.display = "block"
                 slider.layout.display = "block"
+
                 polygon.append(Point(kwargs.get('coordinates')[0], kwargs.get('coordinates')[1]))
                 add_pin(m, kwargs.get('coordinates'))
                 paused=True
     def display_form(m):
         def on_ok_button_clicked(b):
+            global paused
             temp_array.append(slider.value)
+
             button.layout.display = "none"
             slider.layout.display = "none"
-            global paused
-            paused = False
             finish_button.layout.display="block"
+            paused = False
         button.on_click(on_ok_button_clicked)
         submit_control = WidgetControl(widget=button, position='bottomright')
         widget_control_slider = WidgetControl(widget=slider, position='topright')
+
         m.add_control(submit_control)
         m.add_control(widget_control_slider)
+
         button.layout.display = "none"
         slider.layout.display = "none"
     def on_end_button_clicked(b):
+        global polygon
+        global temp_array
+
         button.close()
         slider.close()
         finish_button.close()
-        global polygon
-        global temp_array
+
         tmp = gpd.GeoDataFrame(geometry=polygon, data={'temperature':temp_array}, crs='EPSG:4326')
         to_fill_array.append(tmp)
+
         print(f'{tmp}')
+
         polygon=[]
         temp_array=[]
+    global polygon
+    global temp_array
+    global paused
+    paused=False
+    polygon=[]
+    temp_array=[]
+
     finish_button.on_click(on_end_button_clicked)
     submit_control = WidgetControl(widget=finish_button, position='bottomleft')
     m.add_control(submit_control)
@@ -284,30 +324,45 @@ def create_dataframe(m, to_fill_array):
 
 polygon_array=[]
 locations_array=[]
-def create_dataframe_polygons(m, to_fill_array):
-    submit_button = widgets.Button(description='Submit polygon')
-    end_button = widgets.Button(description='End/Make another polygon')
-    submit_control = WidgetControl(widget=submit_button, position='bottomright')
+iteration=0
+polygon_count=0
+def create_dataframe_polygons(m, to_fill_array, raster_series):
+    submit_button = widgets.Button(description='Add polygon')
+    end_button = widgets.Button(description='Next iteration')
     end_button.layout.display = "none"
+
+    submit_control = WidgetControl(widget=submit_button, position='bottomright')
     end_control = WidgetControl(widget=end_button, position='bottomleft')
     def handle_click2(**kwargs):
         if kwargs.get('type') == 'click':
+            end_button.layout.display = "none"
             submit_button.layout.display = "block"
+
             polygon_array.append(Point(kwargs.get('coordinates')[0], kwargs.get('coordinates')[1]))
             point = (kwargs.get('coordinates')[0], kwargs.get('coordinates')[1])
             locations_array.append(point)
+
             add_pin(m, kwargs.get('coordinates'))
     def on_finish_button_clicked(b):
-        submit_button.close()
-        end_button.close()
-        m.remove_control(submit_control)
-        m.remove_control(end_control)
-        print(f"{to_fill_array}")
+        global iteration
+        if(iteration+1 < len(raster_series)):
+            iteration+=1
+            for layer in m.layers[1:]:
+                m.remove_layer(layer)
+            add_geojson_internal(m, raster_series[iteration])
+        else:
+            print(f"This is the last GeoJson file!")
     def display_form2(m):
         def on_submit_button_clicked(b):
-            end_button.layout.display = "block"
+            
             global locations_array
+            global polygon_count
+            global polygon_array
+            global iteration
+
+            end_button.layout.display = "block"
             submit_button.layout.display = "none"
+
             multipolygon = Polygon(
             locations=[
                 locations_array
@@ -316,17 +371,31 @@ def create_dataframe_polygons(m, to_fill_array):
             fill_color="green"
             )
             m.add_layer(multipolygon)
-            global polygon_array
+
             tmp = gpd.GeoDataFrame(geometry=polygon_array, crs='EPSG:4326')
             to_fill_array.append(tmp)
-            print(f"[1] : {tmp}")
+            polygon_count+=1
+
+            print(f"GeoJson nr: [{iteration+1}], Object at index: [{polygon_count-1}] : {tmp}")
+
             locations_array=[]
             polygon_array=[]
+
         submit_button.on_click(on_submit_button_clicked)
         submit_button.layout.display = "none"
+    global iteration
+    global polygon_count
+    global polygon_array
+    global locations_array
+    polygon_count=0
+    iteration=0
+    polygon_array=[]
+    locations_array=[]    
+
     end_button.on_click(on_finish_button_clicked)
     m.add_control(submit_control)
     m.add_control(end_control)
     display_form2(m)
     m.on_interaction(handle_click2)
+    add_geojson_internal(m, raster_series[iteration])
     return m
