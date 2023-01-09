@@ -39,7 +39,8 @@ def add_geojson(m,path,style=None):
     geo_json = GeoJSON(
         data=data,
         style=styler,
-        hover_style={'color': 'gray'}
+        hover_style={'color': 'gray'},
+        name="layer" + str(len(m.layers))
     )
     m.add(geo_json)
     return m
@@ -64,7 +65,8 @@ def add_geojson_internal(m,path,style=None):
     geo_json = GeoJSON(
         data=data,
         style=styler,
-        hover_style={'color': 'gray'}
+        hover_style={'color': 'gray'},
+        name="layer" + str(len(m.layers))
     )
     m.add(geo_json)
 
@@ -83,7 +85,7 @@ def add_tif(m, path, opacity=False):
         local_filename = path.split('\\')[-1]
 
     styler = {"clamp": False, "palette": "matplotlib.Plasma_6", "band": 1}
-    layer = get_leaflet_tile_layer(path, style=styler)
+    layer = get_leaflet_tile_layer(path, style=styler, name="layer"+str(len(m.layers)))
     m.add(layer)
     if opacity:
         opacity_slider = FloatSlider(description='{}: '.format(local_filename), min=0., max=1., step=0.01, value=1.)
@@ -164,7 +166,9 @@ def prepare_layers_series(series_paths):
     styler={"clamp":False,"palette":"matplotlib.Plasma_6","band":1}
     series=[]
     for i in tqdm(range(len(series_paths))):
-        series.append(get_leaflet_tile_layer(series_paths[i],style=styler))
+        layer=get_leaflet_tile_layer(series_paths[i],style=styler)
+        layer.opacity=0
+        series.append(layer)
     return series
 
 
